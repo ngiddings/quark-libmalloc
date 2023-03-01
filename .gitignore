@@ -17,4 +17,5 @@ autom4te.cache
 include/config.h*
 missing
 stamp-h1
+.deps
 tests/test_bitmapalloc

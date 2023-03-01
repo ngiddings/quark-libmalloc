@@ -149,12 +149,13 @@ int main(int argc, char **args)
     test_heap(256, 1, 128, 1);
     test_heap(256, 1, 4, 1);
 
-    for(int bs = 1; bs <= 32; bs++)
+    for(int bs = 1; bs <= 32; bs *= 2)
     {
+        unsigned long heap_size = (1 << llog2(bs)) * 256;
         unsigned long n = (8 * sizeof(unsigned long)) - 1 - __builtin_clzl((unsigned long) bs);
-        for(int bits = 1; bits <= (8 * sizeof(unsigned long)) && (2 * bits) < (8 * (1 << n)); bits <<= 1)
+        for(int bits = 1; bits < (8 * sizeof(unsigned long)) && (2 * bits) < (8 * (1 << n)); bits <<= 1)
         {
-            test_heap(1024, bs, bits, 0);
+            test_heap(heap_size, bs, bits, 0);
         }
     }
 }
