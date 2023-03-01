@@ -8,7 +8,7 @@
  * @brief 
  * 
  */
-typedef struct
+typedef struct bitmap_heap_descriptor_t
 {
     /**
      * @brief The underlying bitmap representing the availability of chunks of
@@ -60,6 +60,42 @@ typedef struct
      */
     unsigned long free_block_count;
 
+    /**
+     * @brief Bitmask used to isolate only those bits which indicate the
+     * availability of a block. Useful when several bits are used to represent
+     * the state of a single block. See `block_bits`.
+     * 
+     */
+    unsigned long mask;
+
+    /**
+     * @brief The number of bits required to represent the state of each block.
+     * 
+     * If the value is greater than 1, the most significant bit describing each 
+     * block shall indicate its availability. Less significant bits shall 
+     * represent other aspects of the block's state. The number of trailing 
+     * zeroes in `mask` shall be used to calculate this quantity.
+     * 
+     * This qualtity is assumed to be a power of 2, and less than or equal to
+     * the number of bits in an unsigned long. Therefore, acceptable values for
+     * this quantity are as follows: 1, 2, 4, 8, 16, 32[, 64].
+     * 
+     */
+    unsigned long block_bits;
+
+    /**
+     * @brief The number of blocks described by a single unsigned long contained
+     * in `bitmap`. Equal to (8 * sizeof(unsigned long)) / block_bits.
+     * 
+     */
+    unsigned long blocks_in_word;
+
+    /**
+     * @brief Memory will be allocated relative to this location.
+     * 
+     */
+    unsigned long offset;
+
 } bitmap_heap_descriptor_t;
 
 /**
@@ -73,7 +109,8 @@ typedef struct
  * @param size 
  * @return unsigned long 
  */
-unsigned long reserve_region(bitmap_heap_descriptor_t *heap, unsigned long size);
+unsigned long reserve_region(bitmap_heap_descriptor_t *heap, 
+    unsigned long size);
 
 /**
  * @brief Marks the region of memory indicated by `location` and `size` as
@@ -97,13 +134,12 @@ void free_region(bitmap_heap_descriptor_t *heap, unsigned long location,
  * @param block_size The minimum unit of allocation
  * @return unsigned long 
  */
-unsigned long bitmap_size(const memory_map_t *map, unsigned long block_size);
+unsigned long bitmap_size(const memory_map_t *map, unsigned long block_size, unsigned long block_bits);
 
 /**
  * @brief Builds the heap's internal structures according to the memory
- * layout provided in `map`. Assumes that the layout in `map` refers to the
- * caller's virtual address space, and utilizes some of the memory marked as
- * 'available' to store the heap's internal structures.
+ * layout provided in `map`. All locations in `map` are relative to the `offset`
+ * field in `heap`.
  * 
  * A callback function `mmap` may be provided, which will be used to map the
  * space required by the heap to store its internal bitmaps. If `mmap` is NULL,
@@ -111,43 +147,34 @@ unsigned long bitmap_size(const memory_map_t *map, unsigned long block_size);
  * 
  * There are several requirements for the initial state of the `heap` structure:
  * 
- * - The `cache` field must be defined, and point to an array of unsigned longs
- * of sufficient size.
+ * - The `bitmap` field may point to a pre-allocated region of memory which will
+ * be used to store the heap's internal bitmap. If this field is NULL, part of
+ * the heap will be used to store the bitmap, and `mmap`, if not NULL, will be
+ * called to map that region of memory.
  * 
- * - The `block_size` field must be set to the desired smallest unit of allocation.
- * 
- * @param heap A pointer to the structure describing the heap
- * @param map A pointer to the structure providing an initial memory layout
- * @param mmap A callback function used to map memory in the virtual address space
- * @return int 
- */
-int initialize_virtual_heap(bitmap_heap_descriptor_t *heap, const memory_map_t *map, 
-    int (*mmap)(void *location, unsigned long size));
-
-/**
- * @brief Builds the heap's internal structures according to the memory
- * layout provided in `map`. Assumes that physical memory space is being alocated,
- * and therefore does not make assumptions about the caller's address space or
- * attempt to utilize the memory inside the heap. The caller is responsible for
- * providing space to store the heap's internal structures.
- * 
- * There are several requirements for the initial state of the `heap` structure:
- * 
- * - The `bitmap` field must be defined, and sufficient memory reserved at that
- * location to contain the heap's bitmap.
- * 
- * - The `cache` field must be defined, and point to an array of unsigned longs
- * of sufficient size.
+ * - The `cache` field may point to an array of unsigned longs of sufficient 
+ * size, which will be used to speed up memory allocation. If this field is
+ * NULL, caching will not be performed.
  * 
  * - The `cache_capacity` field must be set to the size of the array pointed to
- * by `cache`
+ * by `cache`.
  * 
- * - The `block_size` field must be set to the desired smallest unit of allocation.
+ * - The `block_size` field must be set to the desired smallest unit of 
+ * allocation.
+ * 
+ * - The `block_bits` field must be set to the number of bits required to store
+ * a block's metadata.
+ * 
+ * - The `offset` field must be set to the first location to allocate memory
+ * from. Locations in `map` will be interpreted as relative to `offset`.
  * 
  * @param heap A pointer to the structure describing the heap
  * @param map A pointer to the structure providing an initial memory layout
- * @return int 0 upon success; nonzero upon failure
+ * @param mmap A callback function used to map memory in the virtual address 
+ * space
+ * @return int 0 upon success, nonzero upon failure.
  */
-int initialize_physical_heap(bitmap_heap_descriptor_t *heap, const memory_map_t *map);
+int initialize_heap(bitmap_heap_descriptor_t *heap, memory_map_t *map, 
+    int (*mmap)(void *location, unsigned long size));
 
 #endif

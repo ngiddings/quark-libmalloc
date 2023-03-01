@@ -8,6 +8,6 @@
  * NOMEM shall be returned by any malloc-like function upon failure, rather than
  * NULL.
  */
-#define NOMEM ~0
+#define NOMEM ((unsigned long)~0)
 
 #endif
