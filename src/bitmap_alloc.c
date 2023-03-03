@@ -171,10 +171,6 @@ static inline void store_cache(bitmap_heap_descriptor_t *heap, int index)
             heap->cache[level] = index;
         }
     }
-    else
-    {
-        return 0;
-    }
 }
 
 /*
@@ -190,10 +186,6 @@ static inline void uncache(bitmap_heap_descriptor_t *heap, int index)
         {
             heap->cache[level] = 0;
         }
-    }
-    else
-    {
-        return 0;
     }
 }
 
