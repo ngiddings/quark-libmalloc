@@ -198,6 +198,15 @@ static inline void uncache(bitmap_heap_descriptor_t *heap, int index)
 }
 
 /*
+ * Computes the bitmap index of the block at `location` and `height`.
+ */
+static inline int block_index(bitmap_heap_descriptor_t *heap,
+    unsigned long location, unsigned long height)
+{
+    return (location / (heap->block_size * ((unsigned long)1 << height))) + (1 << (heap->height - height));
+}
+
+/*
  * Marks the indicated block as unavailable, and marks its children as both
  * available. Stores the right-hand child in the cache, and returns the index
  * of the left-hand child. The caller is expected to either split or allocate
@@ -401,6 +410,50 @@ static void initialize_bitmap(bitmap_heap_descriptor_t *heap, const memory_map_t
     }
 }
 
+unsigned long read_bit(bitmap_heap_descriptor_t *heap, unsigned long location,
+    unsigned long bit)
+{
+    int index = block_index(heap, location, 0);
+    while(index && !test_bit(heap, index, BIT_USED))
+    {
+        index /= 2;
+    }
+
+    if(index)
+    {
+        return test_bit(heap, index, bit);
+    }
+    else
+    {
+        return 1;
+    }
+}
+
+int write_bit(bitmap_heap_descriptor_t *heap, unsigned long location,
+    unsigned long bit, int value)
+{
+    int index = block_index(heap, location, 0);
+    while(index && !test_bit(heap, index, BIT_USED))
+    {
+        index /= 2;
+    }
+
+    if(index && value)
+    {
+        set_bit(heap, index, bit);
+        return value;
+    }
+    else if(index)
+    {
+        clear_bit(heap, index, bit);
+        return value;
+    }
+    else
+    {
+        return 1;
+    }
+}
+
 unsigned long reserve_region(bitmap_heap_descriptor_t *heap, unsigned long size)
 {
     int height = llog2((size - 1) / heap->block_size + 1);
@@ -422,7 +475,7 @@ void free_region(bitmap_heap_descriptor_t *heap, unsigned long location, unsigne
 {
     location -= heap->offset;
     int height = llog2(size / heap->block_size);
-    int index = (location / (heap->block_size * ((unsigned long)1 << height))) + (1 << (heap->height - height));
+    int index = block_index(heap, location, height);
     while(!test_bit(heap, index, BIT_USED))
     {
         height++;

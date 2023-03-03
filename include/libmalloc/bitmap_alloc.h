@@ -99,6 +99,33 @@ typedef struct bitmap_heap_descriptor_t
 } bitmap_heap_descriptor_t;
 
 /**
+ * @brief Reads the given bit from the metadata of the memory block at 
+ * `location`. 
+ * 
+ * `location` must have be a location previously returned by `reserve_region`, 
+ * and not have been subsequently freed. `bit` must be less than the 
+ * `block_bits` field in `heap`.
+ * 
+ * @returns nonzero if `bit` is set, 0 otherwise. If `bit` is not less than the
+ * `block_bits` field in `heap`, returns nonzero.
+ */
+unsigned long read_bit(bitmap_heap_descriptor_t *heap, unsigned long location,
+    unsigned long bit);
+
+/**
+ * @brief Writes to the given bit in the metadata of the memory block at 
+ * `location`. 
+ * 
+ * `location` must have be a location previously returned by `reserve_region`, 
+ * and not have been subsequently freed. `bit` must be less than the 
+ * `block_bits` field in `heap`.
+ * 
+ * @returns `value` if bit was written to, nonzero otherwise
+ */
+int write_bit(bitmap_heap_descriptor_t *heap, unsigned long location,
+    unsigned long bit, int value);
+
+/**
  * @brief Reserves a region of memory within the heap containing at least `size`
  * bytes.
  * 
