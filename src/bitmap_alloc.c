@@ -4,6 +4,7 @@
 
 static const int BIT_AVAIL = 0;
 static const int BIT_USED = 1;
+static const int BIT_MAPPED = 2;
 
 /*
  * Sets all elements in the cache's underlying array to 0.
@@ -199,6 +200,17 @@ static inline int block_index(bitmap_heap_descriptor_t *heap,
 }
 
 /*
+ * Computes the location of the block at `index` and `height`
+ */
+static inline unsigned long block_location(bitmap_heap_descriptor_t *heap,
+    int index, int height)
+{
+    return heap->offset 
+        + (heap->block_size << height) 
+            * (index - ((unsigned long)1 << (heap->height - height)));
+}
+
+/*
  * Marks the indicated block as unavailable, and marks its children as both
  * available. Stores the right-hand child in the cache, and returns the index
  * of the left-hand child. The caller is expected to either split or allocate
@@ -283,6 +295,25 @@ static int find_free_region(bitmap_heap_descriptor_t *heap, int height)
     return split_block(heap, find_free_region(heap, height + 1));
 }
 
+static int map_region(bitmap_heap_descriptor_t *heap, int index, int height)
+{
+    int status = 0;
+    if(!test_bit(heap, index, BIT_MAPPED) && height > 0)
+    {
+        status = map_region(heap, index * 2, height - 1);
+        if(!status)
+        {
+            status = map_region(heap, (index * 2) + 1, height - 1);
+        }
+        set_bit(heap, index, BIT_MAPPED);
+    }
+    else if(!test_bit(heap, index, BIT_MAPPED) && height == 0)
+    {
+        status = heap->mmap((void*)block_location(heap, index, 0), heap->block_size);
+    }
+    return status;
+}
+
 static unsigned long compute_memory_size(const memory_map_t *map)
 {
     // Find the last available region in the memory map.
@@ -350,7 +381,7 @@ static void initialize_bitmap(bitmap_heap_descriptor_t *heap, const memory_map_t
             continue;
         }
 
-        unsigned long location = (map->array[i].location + heap->block_size - 1);// & ~(heap->block_size - 1);
+        unsigned long location = (map->array[i].location + heap->block_size - 1);
         location -= location % heap->block_size;
         unsigned long region_end = map->array[i].location + map->array[i].size;
 
@@ -455,7 +486,14 @@ unsigned long reserve_region(bitmap_heap_descriptor_t *heap, unsigned long size)
         clear_bit(heap, index, BIT_AVAIL);
         set_bit(heap, index, BIT_USED);
         heap->free_block_count -= 1 << height;
-        return heap->offset + (heap->block_size << height) * (index - ((unsigned long)1 << (heap->height - height)));
+        if(heap->mmap && map_region(heap, index, height))
+        {
+            return NOMEM;
+        }
+        else
+        {
+            return block_location(heap, index, height);
+        }
     }
     else
     {
@@ -485,7 +523,7 @@ unsigned long bitmap_size(const memory_map_t *map, unsigned long block_size, uns
     return 1UL << llog2((block_bits * compute_memory_size(map) / block_size) / 4);
 }
 
-int initialize_heap(bitmap_heap_descriptor_t *heap, memory_map_t *map, int (*mmap)(void *location, unsigned long size))
+int initialize_heap(bitmap_heap_descriptor_t *heap, memory_map_t *map)
 {
     if(construct_heap_desc(heap, map))
     {
@@ -495,7 +533,8 @@ int initialize_heap(bitmap_heap_descriptor_t *heap, memory_map_t *map, int (*mma
     if(heap->bitmap == (unsigned long*)0)
     {
         int map_index = 0;
-        while(map->array[map_index].size < heap->bitmap_size)
+        while(map->array[map_index].type != M_AVAILABLE 
+            || map->array[map_index].size < heap->bitmap_size)
         {
             map_index++;
             if(map_index >= map->size)
@@ -506,7 +545,7 @@ int initialize_heap(bitmap_heap_descriptor_t *heap, memory_map_t *map, int (*mma
 
         heap->bitmap = (unsigned long*)(heap->offset + map->array[map_index].location);
         memmap_insert_region(map, map->array[map_index].location, heap->bitmap_size, M_UNAVAILABLE);
-        if(mmap && mmap(heap->bitmap, heap->bitmap_size))
+        if(heap->mmap && heap->mmap(heap->bitmap, heap->bitmap_size))
         {
             return -1;
         }

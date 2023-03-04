@@ -96,6 +96,12 @@ typedef struct bitmap_heap_descriptor_t
      */
     unsigned long offset;
 
+    /**
+     * @brief Function pointer which, if not null, will be called whenever
+     * a region on the heap is allocated for the first time.
+     */
+    int (*mmap)(void *location, unsigned long size)
+
 } bitmap_heap_descriptor_t;
 
 /**
@@ -197,11 +203,9 @@ unsigned long bitmap_size(const memory_map_t *map, unsigned long block_size, uns
  * 
  * @param heap A pointer to the structure describing the heap
  * @param map A pointer to the structure providing an initial memory layout
- * @param mmap A callback function used to map memory in the virtual address 
  * space
  * @return int 0 upon success, nonzero upon failure.
  */
-int initialize_heap(bitmap_heap_descriptor_t *heap, memory_map_t *map, 
-    int (*mmap)(void *location, unsigned long size));
+int initialize_heap(bitmap_heap_descriptor_t *heap, memory_map_t *map);
 
 #endif
