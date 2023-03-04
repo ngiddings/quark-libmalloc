@@ -68,53 +68,44 @@ static int trim_map(memory_map_t *map, int index)
     }
     memory_region_t *left = &map->array[index];
     memory_region_t *right = &map->array[index + 1];
-    if(region_overlaps(left, right))
+    if(region_overlaps(left, right) && left->type == right->type)
     {
-        if(left->type == right->type)
-        {
-            left->size = (right->location + right->size > left->location + left->size ? right->location + right->size : left->location + left->size) - left->location;
-            remove_map_entry(map, index + 1);
-            return index;
-        }
-        else if(left->type < right->type)
-        {
-            if(region_contains(right, left))
-            {
-                remove_map_entry(map, index);
-                return index;
-            }
-            else if(left->location + left->size <= right->location + right->size)
-            {
-                left->size = (right->location > left->location) ? right->location - left->location : 0;
-                return index + 1;
-            }
-            else
-            {
-                memory_region_t new_right = {
-                    .location = right->location + right->size, 
-                    .size = (left->location + left->size) - (right->location + right->size), 
-                    .type = left->type};
-                left->size = (right->location > left->location) ? right->location - left->location : 0;
-                if(left->size == 0)
-                    remove_map_entry(map, index);
-                insert_map_entry(map, new_right.location, new_right.size, new_right.type);
-                return index + 2;
-            }
-        }
-        else
-        {
-            if(region_contains(left, right))
-            {
-                remove_map_entry(map, index + 1);
-                return index;
-            }
-            else
-            {
-                right->size = (right->location + right->size) - (left->location + left->size);
-                right->location = left->location + left->size;
-                return index + 1;
-            }
-        }
+        left->size = (right->location + right->size > left->location + left->size ? right->location + right->size : left->location + left->size) - left->location;
+        remove_map_entry(map, index + 1);
+        return index;
+    }
+    else if(region_overlaps(left, right) && left->type < right->type && region_contains(right, left))
+    {
+        remove_map_entry(map, index);
+        return index;
+    }
+    else if(region_overlaps(left, right) && left->type < right->type && left->location + left->size <= right->location + right->size)
+    {
+        left->size = (right->location > left->location) ? right->location - left->location : 0;
+        return index + 1;
+    }
+    else if(region_overlaps(left, right) && left->type < right->type)
+    {
+        memory_region_t new_right = {
+            .location = right->location + right->size,
+            .size = (left->location + left->size) - (right->location + right->size),
+            .type = left->type};
+        left->size = (right->location > left->location) ? right->location - left->location : 0;
+        if (left->size == 0)
+            remove_map_entry(map, index);
+        insert_map_entry(map, new_right.location, new_right.size, new_right.type);
+        return index + 2;
+    }
+    else if(region_overlaps(left, right) && region_contains(left, right))
+    {
+        remove_map_entry(map, index + 1);
+        return index;
+    }
+    else if(region_overlaps(left, right))
+    {
+        right->size = (right->location + right->size) - (left->location + left->size);
+        right->location = left->location + left->size;
+        return index + 1;
     }
     else if((left->location + left->size == right->location) && left->type == right->type)
     {
@@ -122,7 +113,10 @@ static int trim_map(memory_map_t *map, int index)
         remove_map_entry(map, index + 1);
         return index;
     }
-    return index + 1;
+    else
+    {
+        return index + 1;
+    }
 }
 
 int memmap_insert_region(memory_map_t *map, unsigned long location, unsigned long size, memory_type_t type)
