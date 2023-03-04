@@ -78,11 +78,12 @@ void test_heap(unsigned long size, unsigned long block_size, unsigned long bits,
         .cache = heap_cache,
         .cache_capacity = cache_capacity,
         .block_bits = bits,
-        .offset = (unsigned long)heap_data
+        .offset = (unsigned long)heap_data,
+        .mmap = NULL
     };
 
     memmap_insert_region(&memory_map, 0, size, M_AVAILABLE);
-    int status = initialize_heap(&heap, &memory_map, NULL);
+    int status = initialize_heap(&heap, &memory_map);
     assert(!(!status != !result));
     if(status)
     {
