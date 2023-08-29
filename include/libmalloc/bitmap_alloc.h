@@ -1,5 +1,5 @@
-#ifndef _LIBMALLOC_BUDDYALLOC_H
-#define _LIBMALLOC_BUDDYALLOC_H
+#ifndef _LIBMALLOC_BITMAPALLOC_H
+#define _LIBMALLOC_BITMAPALLOC_H
 
 #include "memmap.h"
 #include "common.h"
