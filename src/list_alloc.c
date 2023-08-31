@@ -1,6 +1,5 @@
 #include "libmalloc/list_alloc.h"
 #include <stddef.h>
-#include <stdio.h>
 
 #define MIN_BLOCK_SIZE (4 * sizeof(list_block_t))
 
@@ -56,7 +55,6 @@ void *list_alloc_reserve(list_alloc_descriptor_t *heap, unsigned long size)
     {
         if(p->size >= (size + 2 * sizeof(list_block_t) + MIN_BLOCK_SIZE))
         {
-            printf("Reserving partial block.\n");
             unsigned long new_size = p->size - size - (2 * sizeof(list_block_t));
             list_block_t *new_block = (void*)p + new_size;
             set_block(new_block, 0, size + 2 * sizeof(list_block_t), 0, 0);
@@ -67,7 +65,6 @@ void *list_alloc_reserve(list_alloc_descriptor_t *heap, unsigned long size)
         }
         else if(p->size >= (size + 2 * sizeof(list_block_t)))
         {
-            printf("Reserving whole block.\n");
             set_block_next(p->prev, p->next);
             set_block_prev(p->next, p->prev);
             heap->current_block = p->next;
@@ -86,7 +83,6 @@ void list_alloc_free(list_alloc_descriptor_t *heap, void *p)
     list_block_t *lhs = block_start_ptr(block - 1);
     if(lhs->free == 1)
     {
-        printf("Merging left.\n");
         set_block_next(lhs->prev, lhs->next);
         set_block_prev(lhs->next, lhs->prev);
         unsigned long new_size = block->size + lhs->size;
@@ -97,7 +93,6 @@ void list_alloc_free(list_alloc_descriptor_t *heap, void *p)
     list_block_t *rhs = (block_end_ptr(block) + 1);
     if(rhs->free == 1)
     {
-        printf("Merging right.\n");
         set_block_next(rhs->prev, rhs->next);
         set_block_prev(rhs->next, rhs->prev);
         block->size += rhs->size;

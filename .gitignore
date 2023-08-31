@@ -20,3 +20,4 @@ stamp-h1
 .deps
 tests/test_bitmapalloc
 tests/test_buddyalloc
+tests/test_listalloc
