@@ -49,7 +49,7 @@ static void insert_block(buddy_descriptor_t *heap, unsigned long index,
 unsigned long buddy_map_size(const memory_map_t *map, unsigned long block_size)
 {
     unsigned long memory_size = compute_memory_size(map);
-    return sizeof(buddy_block_t) * memory_size / block_size;
+    return 1UL << llog2(sizeof(buddy_block_t) * memory_size / block_size);
 }
 
 unsigned long buddy_reserve(buddy_descriptor_t *heap, unsigned long size)
