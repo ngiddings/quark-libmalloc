@@ -45,9 +45,9 @@ unsigned long buddy_map_size(const memory_map_t *map, unsigned long block_size);
 
 unsigned long buddy_reserve(buddy_descriptor_t *heap, unsigned long size);
 
-void buddy_free(buddy_descriptor_t *heap, unsigned long location);
+unsigned long buddy_free(buddy_descriptor_t *heap, unsigned long location);
 
-void buddy_free_size(buddy_descriptor_t *heap, unsigned long size, 
+unsigned long buddy_free_size(buddy_descriptor_t *heap, unsigned long size, 
     unsigned long location);
 
 int buddy_alloc_init(buddy_descriptor_t *heap, memory_map_t *map);

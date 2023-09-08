@@ -83,19 +83,21 @@ unsigned long buddy_reserve(buddy_descriptor_t *heap, unsigned long size)
     return NOMEM;
 }
 
-void buddy_free(buddy_descriptor_t *heap, unsigned long location)
+unsigned long buddy_free(buddy_descriptor_t *heap, unsigned long location)
 {
     unsigned long index = (location - (unsigned long)heap->offset) / heap->block_size;
     unsigned long k = llog2((heap->block_size * (1UL << heap->block_map[index].kval)) / heap->block_size);
     insert_block(heap, index, k);
+    return (1UL << k) * heap->block_size;
 }
 
-void buddy_free_size(buddy_descriptor_t *heap, unsigned long location,
+unsigned long buddy_free_size(buddy_descriptor_t *heap, unsigned long location,
     unsigned long size)
 {
     unsigned long index = (location - (unsigned long)heap->offset) / heap->block_size;
     unsigned long k = llog2(size / heap->block_size);
     insert_block(heap, index, k);
+    return (1UL << k) * heap->block_size;
 }
 
 int buddy_alloc_init(buddy_descriptor_t *heap, memory_map_t *map)
